@@ -1,3 +1,4 @@
+console.log("filter.js");
 const all_rows = document.querySelectorAll(".today-attendance-table tbody tr");
 const all_shiftDisplay = document.querySelectorAll(".currentShift");
 
@@ -38,31 +39,34 @@ function getCurrentShift() {
         return '8a';
     } else if (currentHour >= 14 && currentHour < 22) {
         return '8b';
-    } else {
+    } else if (currentHour >= 22 && currentHour < 6){
         return '8c';
+    }else{
+        return '8a'; 
     }
 }
-
 
 const currentShift = getCurrentShift();
 filter(currentShift);
 
 all_rows.forEach(row => {
+    let id = row.querySelector(".id").innerHTML;
     let intime = (row.querySelector(".intime"));
     let outtime = (row.querySelector(".outtime"));
     if ((intime && (intime.innerHTML == "-" || intime.innerHTML =="")) || (outtime && (outtime.innerHTML == "-" || outtime.innerHTML ==""))) {
       row.classList.add("mis-pinch");
-      if (intime.innerHTML =="-") {
+      if (intime.innerHTML == "-") {
         intime.innerHTML = `<div class="table-tag">Punch in</div>`;
       }else{
         outtime.innerHTML = `<div class="table-tag">Punch out</div>`;
       }
 
       row.querySelector(".action").innerHTML = (`
-        <div class="btns-container">
-            <button type="button" class="table-btn cancel">Cancel</button>
+        <form class="btns-container">
+            <input type="hidden" name="empid" value="${id}">
+            <a herf="{{url_for('views.cancel',id=${id})}}" class="table-btn cancel">Cancel</a>
             <button type="button" class="table-btn continue">Continue</button>
-        </div>
+        </form>
       `)
 
     }else{

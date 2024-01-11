@@ -4,17 +4,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from flask import current_app as app
 from flask import  flash,redirect
-from .models import Attendance, Shift_time, Emp_login,Festival
+from .models import Attendance, Shift_time, Emp_login,Festival,late,leave,NewShift
 from . import db
 from os import path
 import datetime
 import sched
-#from twilio.rest import Client
+from twilio.rest import Client
 import schedule
 import time
 from datetime import datetime, timedelta
 from sqlalchemy import text 
 from email.mime.text import MIMEText
+import csv
 
 import pandas as pd
 scheduler = sched.scheduler(time.time, time.sleep)
@@ -57,15 +58,13 @@ def send_sms(numbers_to_message, message_body):
         )
 
         print(f"Message SID for {number}: {message.sid}")
-    
-def update_or_add_shift(shift_type, in_time, out_time):
-    existing_shift = Shift_time.query.filter_by(shiftType=shift_type).first()
+def update_or_add_shift(shift_type, in_time, out_time, week_ff, empid):
+    existing_shift = Shift_time.query.filter_by(shiftType=shift_type, emp_id=empid).first()
 
     if existing_shift:
         # Update existing shift
         existing_shift.shiftIntime = in_time
         existing_shift.shift_Outtime = out_time
-        existing_shift.work_Duration = "none"
         db.session.commit()
         print("Shift updated")
     else:
@@ -74,33 +73,48 @@ def update_or_add_shift(shift_type, in_time, out_time):
             shiftIntime=in_time,
             shift_Outtime=out_time,
             shiftType=shift_type,
-            work_Duration="none"
+            week_off=week_ff,
+            emp_id=empid
         )
         db.session.add(new_shift)
         db.session.commit()
-        print("New shift added")
+        print("New shift added")   
+# def update_or_add_shift(shift_type, in_time, out_time,week_ff,empid):
+#     existing_shift = Shift_time.query.filter_by(shiftType=shift_type).first()
+
+#     if existing_shift:
+#         # Update existing shift
+#         existing_shift.shiftIntime = in_time
+#         existing_shift.shift_Outtime = out_time
+#         db.session.commit()
+#         print("Shift updated")
+#     else:
+#         # Add new shift
+#         new_shift = Shift_time(
+#             shiftIntime=in_time,
+#             shift_Outtime=out_time,
+#             shiftType=shift_type,
+#             week_off=week_ff,
+#             emp_id=empid
+#         )
+#         db.session.add(new_shift)
+#         db.session.commit()
+#         print("New shift added")
 
 def process_excel_data(file_path):
     if os.path.exists(file_path):
-        sheet_names = pd.ExcelFile(file_path).sheet_names
+        df = pd.read_excel(file_path, engine='auto', sheet_name=None, skiprows=1)
 
-        for sheet_name in sheet_names:
-            df = None
-            if file_path.lower().endswith('.xlsx'):
-                df = pd.read_excel(file_path, sheet_name, engine='openpyxl', skiprows=1)
-            elif file_path.lower().endswith('.xls'):
-                df = pd.read_excel(file_path, sheet_name, engine='xlrd', skiprows=1)
-            else:
-                print("Unsupported file format")
-                return  # Handle unsupported format
-
-            for index, row in df.iterrows():
+        for sheet_name, sheet_df in df.items():
+            for index, row in sheet_df.iterrows():
                 shift_type = row['Shift']
                 in_time = str(row['S. InTime'])
                 out_time = str(row['S. OutTime'])
-                print("Processing: ", shift_type)
+                week_off = row['weekoff']
+                emp_id = row['empid']
 
-                update_or_add_shift(shift_type, in_time, out_time)
+                print("Processing: ", shift_type)
+                update_or_add_shift(shift_type, in_time, out_time, week_off, emp_id)
 
 
 def calculate_Attendance(chunk_size=100):
@@ -246,7 +260,7 @@ def schedule_function(emp_id):
  
 
 
-def count_attendance_and_update_shift():
+def shiftypdate():
     employees = Emp_login.query.all()  # Fetch all employees
     
     for employee in employees:
@@ -357,7 +371,8 @@ def process_csv_file(file_path):
         db.session.commit()
 
 
-#tharun
+
+
 def attend_excel_data(file_path):
     if os.path.exists(file_path):
         sheet_names = pd.ExcelFile(file_path).sheet_names
@@ -416,9 +431,6 @@ def attend_excel_data(file_path):
         db.session.commit()
     else:
         print("File not found")
-
-
-
 
 def delete_all_employees():
     try:

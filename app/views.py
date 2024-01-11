@@ -1,6 +1,6 @@
 from flask_login import login_required, current_user,login_user
 from . import db
-from .models import Attendance,Shift_time,Backup, late, leave,notifications ,NewShift,Emp_login
+from .models import Attendance,Shift_time,Backup, late, leave,notifications ,NewShift,Emp_login,user_edit
 from flask import Blueprint, render_template, request, flash, redirect, url_for,jsonify,session
 import json
 import datetime
@@ -451,7 +451,7 @@ def handle_leaveform_callback(leaveDet):
             print("Mail Not Sent")
 
         try:
-            user=Employee.query.filter_by(emp_id=emp_id).first()
+            user=uplode.query.filter_by(emp_id=emp_id).first()
             phone=user.phoneNumber
             phone="+91"+phone
             print(type(phone))
@@ -506,7 +506,7 @@ def emp_login():
             else:
                 flash("Incorrect Password", category='error')
         else:
-            flash("Incorrect Employee ID", category='error')
+            flash("Incorrect uplode ID", category='error')
     return render_template("emp_log.html")
 
 @views.route("/user_dashboard",methods=['POST','GET'])
@@ -949,69 +949,120 @@ def upload_emp():
         return redirect(url_for('views.admin'))
     return render_template("addrmp.html")
 
+
+
+
+@views.route('/festival-upload',methods=['POST',"GET"])
+def upload_festival():
+    if request.method == 'POST':
+        file=request.files['excel']
+        filename = secure_filename(file.filename)
+        print(filename)
+        file_path=os.path.join(app.config['EXCEL_FOLDER'], filename)
+        file.save(file_path)
+        up_festival(file_path)
+        #return redirect(url_for('views.admin'))
+    return render_template("uploadfesti.html")
+
+@views.route('/getshift',methods = ['POST'])
+def getshift():
+    get_signal = request.get_json()
+    signal = get_signal.get('get', False)
+
+    if signal:
+        # Assuming Shift_time has attributes like 'id', 'start_time', 'end_time', etc.
+        shift_times = Shift_time.query.order_by(Shift_time.id).all()
+
+        # Convert Shift_time objects to dictionaries
+        shift_list = [{"id": shift.id, "start_time": shift.shiftIntime, "end_time": shift.shift_Outtime,"shift":shift.shiftType} for shift in shift_times]
+
+        return jsonify({"res": shift_list})
+
+    return jsonify({"error": "Invalid request"})
+
+
+# @views.route('/uploadselect', methods=['POST'])
+# def upload_select():
+#     if(request.method=='POST'):
+
+#         file_type = request.form.get('filetype')
+
+#         # Handle file upload
+#         if 'emp' in request.files:
+#             file = request.files['emp']
+#             # Customize response based on file_type
+#             if file_type == 'attendance':
+#                 print("j=ubjxk")
+#                 filename = secure_filename(file.filename)
+#                 print(filename)
+#                 file_path=os.path.join(app.config['EXCEL_FOLDER'], filename)
+#                 file.save(file_path)
+#                 attend_excel_data(file_path)
+#                 print("babdckzub")
+#                 return redirect(url_for('views.calculate'))
+            
+#             elif file_type == 'addEmployee':
+#                 filename = secure_filename(file.filename)
+#                 print(filename)
+#                 file_path=os.path.join(app.config['EXCEL_FOLDER'], filename)
+#                 file.save(file_path)
+#                 add_employee(file_path)
+#                 return redirect(url_for('views.admin'))
+#             elif file_type == 'shift':
+#                 filename = secure_filename(file.filename)
+#                 print(filename)
+#                 try:
+#                         file_path = os.path.join(app.config['EXCEL_FOLDER'], str(filename))  # Use correct case 'EXCEL_FOLDER'
+#                         process_excel_data(file_path)  # Call the data processing function
+
+
+#                 except Exception as e:
+#                     print("Error occurred:", e)
+#                     db.session.rollback()  
+#         else :
+#             return 'No file uploaded'
+
+#     return redirect(url_for('views.admin'))
+
 @views.route('/uploadselect', methods=['POST'])
 def upload_select():
-    if(request.method=='POST'):
-
+    if request.method == 'POST':
         file_type = request.form.get('filetype')
 
         # Handle file upload
         if 'emp' in request.files:
             file = request.files['emp']
-            # Customize response based on file_type
-            if file_type == 'attendance':
-                
-                filename = secure_filename(file.filename)
-                print(filename)
-                file_path=os.path.join(app.config['EXCEL_FOLDER'], filename)
-                file.save(file_path)
-                attend_excel_data(file_path)
-                return redirect(url_for('views.calculate'))
-            
-            elif file_type == 'addEmployee':
-                filename = secure_filename(file.filename)
-                print(filename)
-                file_path=os.path.join(app.config['EXCEL_FOLDER'], filename)
-                file.save(file_path)
-                add_employee(file_path)
-                return redirect(url_for('views.admin'))
-            elif file_type == 'shift':
-                filename = secure_filename(file.filename)
-                print(filename)
-                try:
-                  
-                        file_path = os.path.join(app.config['EXCEL_FOLDER'], str(filename))  # Use correct case 'EXCEL_FOLDER'
-                        process_excel_data(file_path)  # Call the data processing function
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['EXCEL_FOLDER'], filename)
 
+            try:
+                with app.app_context():
+                    # Customize response based on file_type
+                    if file_type == 'attendance':
+                        file.save(file_path)
+                        attend_excel_data(file_path)
+                        return redirect(url_for('views.calculate'))
 
-                except Exception as e:
-                    print("Error occurred:", e)
-                    db.session.rollback()  
-        else :
+                    elif file_type == 'addEmployee':
+                        file.save(file_path)
+                        add_employee(file_path)
+                        return redirect(url_for('views.admin'))
+
+                    elif file_type == 'shift':
+                        file.save(file_path)
+                        process_excel_data(file_path)
+                        return redirect(url_for('views.admin'))
+
+            except Exception as e:
+                print("Error occurred:", e)
+                db.session.rollback()
+                # Log the error and provide a user-friendly message
+                # You may want to redirect the user to an error page or display a flash message
+
+        else:
             return 'No file uploaded'
 
     return redirect(url_for('views.admin'))
-
-@socketio.on('user-edit')
-@login_required
-def handle_user_editform_callback(user_edit):
-    emp_id=session.get('emp_id')
-    emp_name=session.get('name')
-    emp_email=session.get('email')
-    phNumber=session.get('phNumber')
-    user_emp_name=''
-    user_email=''
-    user_phNumber=''
-
-    if emp_name != user_edit['empName']:
-        user_emp_name = user_edit['empName']
-    if emp_email != user_edit['empEmail']:
-        user_email=user_edit['empEmail']
-    if phNumber != user_edit['empPhoneNumber']:
-        user_phNumber=user_edit['empPhoneNumber']
-    user_edit={emp_id:emp_id, user_emp_name:user_emp_name, user_email:user_email, user_phNumber:user_phNumber}
-
-    emit('user-edit', user_edit, broadcast=True)
 
 @views.route('/del_single_emp',methods=['POST'])
 def del_single_emp():
@@ -1056,16 +1107,114 @@ def edit_employee():
         print(f"Row with emp_id {emp_id} not found.")
     return redirect(url_for('views.admin'))
 
-@views.route('/festival-upload',methods=['POST',"GET"])
-def upload_festival():
-    if request.method == 'POST':
-        file=request.files['excel']
-        filename = secure_filename(file.filename)
-        print(filename)
-        file_path=os.path.join(app.config['EXCEL_FOLDER'], filename)
-        file.save(file_path)
-        up_festival(file_path)
-        #return redirect(url_for('views.admin'))
-    return render_template("uploadfesti.html")
+@views.route('/fetch_emp_details',methods=['POST'])
+def fetch_emp_details():
+    form_data = request.form
+    emp_id=form_data['empid']
+    editType=form_data['editType']
+    value=Emp_login.query.filter_by(emp_id=emp_id).first()
 
+    print(form_data)
 
+    response_data = {'value': getattr(value,editType)}
+
+    return jsonify(response_data)
+
+@views.route('/user-edit',methods=['POST'])
+@login_required
+def handle_user_editform_callback():
+    data = request.json
+    print("data :",data)
+    new_req=None
+    emp_id=data.get('ID')
+    user=Emp_login.query.filter_by(emp_id=emp_id).first()
+    name = user.name
+    if data.get('newName'):
+        print('new Name')
+        newdata = data.get('newName')
+        olddata = data.get('oldName')
+        new_req=user_edit(emp_id=emp_id, name=name, old_data=olddata, new_data=newdata, data_type='name')
+
+    elif data.get('newEmail'):
+        print('new email')
+        newdata=data.get('newEmail')
+        olddata=data.get('oldemail')
+        new_req=user_edit(emp_id=emp_id, name=name, old_data=olddata, new_data=newdata, data_type='email')
+
+    elif data.get('newMobileNumber'):
+        print('new number')
+        newdata=data.get('newMobileNumber')
+        olddata=data.get('oldphone')
+        new_req=user_edit(emp_id=emp_id, name=name, old_data=olddata, new_data=newdata, data_type='phoneNumber')
+    else:
+        print("data not received properly")
+
+    db.session.add(new_req)
+    db.session.commit()
+    return jsonify({'data':"request received"})
+    
+
+@views.route('/user_edit_data',methods=['POST'])
+@login_required
+def handle_user_editform():
+    try:
+        # Perform any necessary data retrieval or processing here
+        # For example, let's assume you have a list of user_edit objects
+        user_edits = user_edit.query.all()
+
+        # Convert the user_edit objects to a format that can be JSON-serialized
+        user_edit_data = [{'id': user.id,'name':user.name, 'data_type': user.data_type, 'old_data': user.old_data, 'new_data': user.new_data, 'emp_id': user.emp_id} for user in user_edits]
+
+        # Send the data as JSON
+        return jsonify({'success': True, 'data': user_edit_data})
+
+    except Exception as e:
+        # Handle exceptions appropriately
+        return jsonify({'success': False, 'error': str(e)})
+    
+@views.route('/accept_edit',methods=['POST'])
+@login_required
+def accept_edit():
+    data=request.json
+    id=data.get('id')
+    emp_id=data.get('emp_id')
+    name=data.get('name')
+    data_type=data.get('data_type')
+    old_data=data.get('old_data')
+    new_data=data.get('new_data')
+
+    emp=Emp_login.query.filter_by(emp_id=emp_id).first()
+    old_value=getattr(emp,data_type)
+    if old_data==old_value:
+        setattr(emp,data_type,new_data)
+    else:
+        print("data not matched")
+    
+    user=user_edit.query.filter_by(id=id).first()
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify("Changed Successfully")
+
+@views.route('/decline_edit',methods=['POST'])
+@login_required
+def decline_edit():
+    data=request.json
+    id=data.get('id')
+    user=user_edit.query.filter_by(id=id).first()
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify("Request Declined")
+
+@views.route('/cancel/<int:id>')
+def cancel(id):
+    emp=Emp_login.query.filter_by(emp_id=id).first()
+    Phonenum=emp.phoneNumber
+    email=emp.email
+    message=f"""
+    Dear {emp.name}:
+        it is a gentle remainder to you,
+        You have missed to keep the punch in the biometric machine
+
+                """
+    send_mail(email,message)
+    send_sms(Phonenum,message)  

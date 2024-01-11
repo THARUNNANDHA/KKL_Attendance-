@@ -82,7 +82,8 @@ class Shift_time(db.Model):
     shiftIntime = db.Column(db.String(150))
     shift_Outtime = db.Column(db.String(150))
     shiftType = db.Column(db.String(150))
-    work_Duration=db.Column(db.String(150))
+    week_off=date=db.Column(db.String(150), nullable=False)
+    emp_id=db.Column(db.Integer)
     
     
 class Backup(db.Model):
@@ -159,21 +160,17 @@ class leave(db.Model, UserMixin):
     hr_approval = db.Column(db.String(150), default='Pending')
     date = db.Column(db.DateTime(timezone=True), default=func.now())
 
-class user_edit(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    emp_id = db.Column(db.Integer)
-    emp_name = db.Column(db.String(150), nullable=False)
-    reason = db.Column(db.String(150), nullable=False)
-    from_time = db.Column(db.String(150), nullable=False)
-    to_time = db.Column(db.String(150), nullable=False)
-    status = db.Column(db.String(150), default='Pending')
-    # hod_approval = db.Column(db.String(150), default='Pending')
-    approved_by = db.Column(db.String(150), default='Pending')
-    hr_approval = db.Column(db.String(150), default='Pending')
-    date = db.Column(db.DateTime(timezone=True), default=func.now())
+
 
 class Festival(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     holiday=db.Column(db.String(150), nullable=False)
     date=db.Column(db.String(150), nullable=False)
 
+class user_edit(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    emp_id = db.Column(db.Integer)
+    name = db.Column(db.String(150), nullable=False)
+    old_data=db.Column(db.String(150), nullable=False)
+    new_data=db.Column(db.String(150), nullable=False)
+    data_type=db.Column(db.String(150), nullable=False)
